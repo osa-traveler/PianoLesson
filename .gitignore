@@ -14,3 +14,4 @@ Config/Local.xcconfig
 *.musicxml
 Docs/sample*
 !Packages/PianoCore/Tests/**/Fixtures/*.musicxml
+!Packages/PianoCore/Tests/**/Fixtures/*.mxl

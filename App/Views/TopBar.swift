@@ -4,11 +4,11 @@ import SwiftUI
 /// トップバー（仕様 3.1）
 struct TopBar: View {
     @Bindable var model: PracticeModel
+    let onBack: () -> Void
 
     var body: some View {
         HStack(spacing: 10) {
-            IconButton(systemName: "chevron.left") {}
-                .disabled(true)  // 曲ライブラリは Phase 4
+            IconButton(systemName: "chevron.left") { onBack() }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(model.score.title).font(.ui(15, .bold)).foregroundStyle(Theme.ink)

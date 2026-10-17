@@ -35,6 +35,27 @@ targets:
           - UIInterfaceOrientationLandscapeRight
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
+        LSSupportsOpeningDocumentsInPlace: false
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: MusicXML
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes:
+              - org.musicxml.musicxml
+              - com.recordare.musicxml.compressed
+        UTImportedTypeDeclarations:
+          - UTTypeIdentifier: org.musicxml.musicxml
+            UTTypeDescription: MusicXML
+            UTTypeConformsTo: [public.xml]
+            UTTypeTagSpecification:
+              public.filename-extension: [musicxml]
+              public.mime-type: [application/vnd.recordare.musicxml+xml]
+          - UTTypeIdentifier: com.recordare.musicxml.compressed
+            UTTypeDescription: 圧縮 MusicXML
+            UTTypeConformsTo: [public.zip-archive, public.data]
+            UTTypeTagSpecification:
+              public.filename-extension: [mxl]
+              public.mime-type: [application/vnd.recordare.musicxml]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: jp.personal.PianoPractice

@@ -5,6 +5,7 @@ import SwiftUI
 /// 練習画面（上から トップバー／譜面／落下レーン／鍵盤）
 struct PracticeScreen: View {
     @Bindable var model: PracticeModel
+    let onBack: () -> Void
 
     static let topBarHeight: CGFloat = 56
     static let keyboardHeight: CGFloat = 150
@@ -20,7 +21,7 @@ struct PracticeScreen: View {
                                         width: geo.size.width)
 
             VStack(spacing: 0) {
-                TopBar(model: model)
+                TopBar(model: model, onBack: onBack)
                     .frame(height: Self.topBarHeight)
                 TimelineView(.animation(paused: !model.isPlaying)) { context in
                     let _ = model.seekRevision

@@ -8,12 +8,17 @@ import QuartzCore
 final class PracticeModel {
     let score: Score
     let engraving: EngravedScore
+    let songID: UUID
     @ObservationIgnored let clock: PracticeClock
 
-    var settings = PracticeSettings() {
+    var settings: PracticeSettings {
         didSet {
             if settings.tempoRatio != oldValue.tempoRatio {
                 clock.setRate(settings.tempoRatio, atHost: CACurrentMediaTime())
+            }
+            if settings.loopRange != oldValue.loopRange {
+                applyLoop()
+                rewind()
             }
         }
     }
@@ -22,13 +27,22 @@ final class PracticeModel {
     /// 停止中に位置が変わったとき、画面を描き直させるためのカウンタ
     private(set) var seekRevision = 0
 
-    init(score: Score) {
+    init(score: Score, songID: UUID, settings: PracticeSettings = PracticeSettings(), lastBeat: Double? = nil) {
         self.score = score
+        self.songID = songID
+        self.settings = settings
         engraving = EngravedScore(score: score)
         clock = PracticeClock(tempoMap: score.tempoMap)
-        clock.setRate(settings.tempoRatio, atHost: CACurrentMediaTime())
-        clock.setLoop(beats: preRollStart..<score.lengthBeats)
-        clock.seek(toBeat: preRollStart, atHost: CACurrentMediaTime())
+        if let range = settings.loopRange, range.upperBound >= score.measures.count {
+            self.settings.loopRange = nil
+        }
+        clock.setRate(self.settings.tempoRatio, atHost: CACurrentMediaTime())
+        applyLoop()
+        if let lastBeat, lastBeat > 0, lastBeat < score.lengthBeats {
+            seek(toMeasure: score.measureIndex(atBeat: lastBeat))
+        } else {
+            rewind()
+        }
         #if DEBUG
         applyDebugLaunchArguments()
         #endif
@@ -50,9 +64,31 @@ final class PracticeModel {
     }
     #endif
 
-    /// 先頭の1小節前から始めて、最初の音が上から落ちてくるようにする
-    var preRollStart: Double {
-        -(score.measures.first?.time.measureLength ?? 4)
+    /// ループ範囲（小節 index）。未設定なら曲全体
+    var loopMeasures: ClosedRange<Int> {
+        settings.loopRange ?? 0...max(0, score.measures.count - 1)
+    }
+
+    private func leadIn(before measureIndex: Int) -> Double {
+        score.measures.indices.contains(measureIndex) ? score.measures[measureIndex].time.measureLength : 4
+    }
+
+    /// 指定した小節の1小節前から始めて、最初の音が上から落ちてくるようにする
+    private func preRollStart(measure: Int) -> Double {
+        guard score.measures.indices.contains(measure) else { return -4 }
+        return score.startBeat(of: score.measures[measure]) - leadIn(before: measure)
+    }
+
+    private func applyLoop() {
+        let range = loopMeasures
+        guard score.measures.indices.contains(range.lowerBound),
+              score.measures.indices.contains(range.upperBound) else {
+            clock.setLoop(beats: nil)
+            return
+        }
+        let start = preRollStart(measure: range.lowerBound)
+        let end = score.endBeat(of: score.measures[range.upperBound])
+        clock.setLoop(beats: start..<end)
     }
 
     func togglePlay() {
@@ -61,10 +97,20 @@ final class PracticeModel {
         isPlaying.toggle()
     }
 
+    func pause() {
+        if isPlaying { togglePlay() }
+    }
+
     func rewind() {
-        clock.seek(toBeat: preRollStart, atHost: CACurrentMediaTime())
+        seek(toMeasure: loopMeasures.lowerBound)
+    }
+
+    func seek(toMeasure index: Int) {
+        clock.seek(toBeat: preRollStart(measure: index), atHost: CACurrentMediaTime())
         seekRevision += 1
     }
+
+    var currentBeat: Double { clock.beat(atHost: CACurrentMediaTime()) }
 
     func changeTempo(steps: Int) {
         let r = settings.tempoRatio + Double(steps) * PracticeSettings.tempoRatioStep
@@ -83,7 +129,11 @@ final class PracticeModel {
     }
 
     var loopText: String {
-        if let r = settings.loopRange { return "\(r.lowerBound + 1)–\(r.upperBound + 1)小節" }
-        return "1–\(score.measures.count)小節"
+        let r = loopMeasures
+        return "\(score.measures[safe: r.lowerBound]?.number ?? "1")–\(score.measures[safe: r.upperBound]?.number ?? "")小節"
     }
+}
+
+extension Array {
+    subscript(safe index: Int) -> Element? { indices.contains(index) ? self[index] : nil }
 }

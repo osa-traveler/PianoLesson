@@ -10,6 +10,7 @@
 
 ```sh
 cp Config/Local.xcconfig.example Config/Local.xcconfig   # 自分の DEVELOPMENT_TEAM を書く
+./scripts/fetch-soundfont.sh                              # ピアノ音源（CC0）を取得
 xcodegen generate
 open PianoPractice.xcodeproj
 ```
@@ -17,3 +18,8 @@ open PianoPractice.xcodeproj
 ロジックのテスト: `cd Packages/PianoCore && swift test`
 
 要件: Xcode 27 以降、iPadOS 26 以降。
+
+## 同梱・利用している素材
+
+- 楽譜フォント Bravura（Steinberg、SIL Open Font License 1.1）: `App/Resources/Fonts/`
+- ピアノ音源 Upright Piano KW（FreePats、CC0 1.0）: `scripts/fetch-soundfont.sh` で取得（リポジトリには含めない）

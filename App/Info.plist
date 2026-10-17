@@ -38,6 +38,8 @@
 	<string>1</string>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<false/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Bluetooth MIDI キーボードと接続するために使います。</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Bravura.otf</string>

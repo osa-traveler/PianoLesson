@@ -29,6 +29,7 @@ targets:
         UIAppFonts:
           - Bravura.otf
         UIRequiresFullScreen: true
+        NSBluetoothAlwaysUsageDescription: Bluetooth MIDI キーボードと接続するために使います。
         UIStatusBarHidden: true
         UISupportedInterfaceOrientations~ipad:
           - UIInterfaceOrientationLandscapeLeft

@@ -122,11 +122,31 @@ private struct GuideToggle: View {
 private struct SettingsButton: View {
     @Binding var settings: PracticeSettings
     @State private var showing = false
+    @State private var showingBluetooth = false
 
     var body: some View {
         IconButton(systemName: "gearshape.fill") { showing = true }
+            .sheet(isPresented: $showingBluetooth) {
+                BluetoothMIDIView { showingBluetooth = false }
+            }
             .popover(isPresented: $showing) {
                 Form {
+                    Section("MIDI キーボード") {
+                        let names = MIDIInput.shared.sourceNames
+                        if names.isEmpty {
+                            Text("つながっていません").foregroundStyle(Theme.sub)
+                        }
+                        ForEach(names, id: \.self) { name in
+                            Label(name, systemImage: "pianokeys").foregroundStyle(Theme.ink)
+                        }
+                        Button("Bluetooth MIDI を接続…") {
+                            showing = false
+                            Task { @MainActor in
+                                try? await Task.sleep(for: .milliseconds(400))
+                                showingBluetooth = true
+                            }
+                        }
+                    }
                     Section("表示") {
                         Picker("音名", selection: $settings.naming) {
                             Text("C D E").tag(Naming.cde)

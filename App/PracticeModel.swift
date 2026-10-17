@@ -79,6 +79,10 @@ final class PracticeModel {
             settings.hands = mode
         }
         if defaults.string(forKey: "naming") == "doremi" { settings.naming = .doremi }
+        // ループ範囲: `-loop 1,2`（小節 index）
+        if let loop = defaults.string(forKey: "loop")?.split(separator: ",").compactMap({ Int($0) }), loop.count == 2 {
+            settings.loopRange = loop[0]...loop[1]
+        }
         if defaults.bool(forKey: "darkLane") { settings.darkLane = true }
         if defaults.bool(forKey: "autoplay") { togglePlay() }
         // 打鍵の再現: `-demoPress 64,70`
@@ -108,15 +112,13 @@ final class PracticeModel {
 
     // MARK: - 判定・入力
 
-    private var loopBeats: Range<Double>? {
-        let range = loopMeasures
-        guard score.measures.indices.contains(range.lowerBound),
-              score.measures.indices.contains(range.upperBound) else { return nil }
-        return preRollStart(measure: range.lowerBound)..<score.endBeat(of: score.measures[range.upperBound])
-    }
-
     func configureJudge() {
-        judge.configure(settings: settings, waitEnabled: isWaitAvailable, loop: loopBeats, atHost: CACurrentMediaTime())
+        // 判定するのはループ範囲の小節だけ（助走の1小節は除く）
+        let range = loopMeasures
+        let judged = score.measures[safe: range.lowerBound].flatMap { first in
+            score.measures[safe: range.upperBound].map { score.startBeat(of: first)..<score.endBeat(of: $0) }
+        }
+        judge.configure(settings: settings, waitEnabled: isWaitAvailable, loop: judged, atHost: CACurrentMediaTime())
     }
 
     /// MIDI と画面の鍵盤の入力を判定と音へつなぐ（MIDI スレッドから直接呼ばれる）

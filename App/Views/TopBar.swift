@@ -32,19 +32,8 @@ struct TopBar: View {
             HandsPicker(selection: $model.settings.hands)
             GuideToggle(isOn: $model.settings.showStaffGuides)
             WaitToggle(isOn: $model.settings.waitForCorrectKey, isAvailable: model.isWaitAvailable)
-            SoundButton(settings: $model.settings)
-
-            Button {} label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "repeat")
-                    Text(model.loopText).font(.ui(13, .medium))
-                }
-                .foregroundStyle(Theme.ink)
-                .padding(.horizontal, 12)
-                .frame(height: 44)
-                .background(Theme.button, in: RoundedRectangle(cornerRadius: 10))
-            }
-            .disabled(true)  // ループ範囲のシートは Phase 6
+            SettingsButton(settings: $model.settings)
+            LoopButton(model: model)
         }
         .padding(.horizontal, 16)
         .frame(maxHeight: .infinity)
@@ -129,36 +118,56 @@ private struct GuideToggle: View {
     }
 }
 
-/// 音量（右手／左手／メトロノーム）とお手本の音
-private struct SoundButton: View {
+/// 設定（表示・判定・音）
+private struct SettingsButton: View {
     @Binding var settings: PracticeSettings
     @State private var showing = false
 
     var body: some View {
-        IconButton(systemName: "speaker.wave.2.fill") { showing = true }
+        IconButton(systemName: "gearshape.fill") { showing = true }
             .popover(isPresented: $showing) {
-                VStack(alignment: .leading, spacing: 14) {
-                    Text("音量").font(.ui(15, .bold))
-                    slider("右手", $settings.rightVolume, Theme.handR)
-                    slider("左手", $settings.leftVolume, Theme.handL)
-                    slider("メトロノーム", $settings.metronomeVolume, Theme.ink)
-                    Toggle("メトロノーム", isOn: $settings.metronomeOn)
-                    Toggle(isOn: $settings.playInputSound) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("弾いた音をアプリで鳴らす")
-                            Text("音の出る電子ピアノならオフに").font(.ui(11)).foregroundStyle(Theme.sub)
+                Form {
+                    Section("表示") {
+                        Picker("音名", selection: $settings.naming) {
+                            Text("C D E").tag(Naming.cde)
+                            Text("ド レ ミ").tag(Naming.doremi)
                         }
+                        .pickerStyle(.segmented)
+                        Stepper("先読み \(Int(settings.lookaheadBeats)) 拍", value: $settings.lookaheadBeats,
+                                in: PracticeSettings.lookaheadRange, step: 1)
+                        Toggle("レーンを暗くする", isOn: $settings.darkLane)
                     }
-                    Toggle(isOn: $settings.playPracticedHands) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("練習する手もお手本の音を鳴らす")
-                            Text("MIDI キーボードで弾くときはオフに").font(.ui(11)).foregroundStyle(Theme.sub)
+                    Section {
+                        LabeledContent("判定の幅") {
+                            Text("±\(Int((settings.judgeWindow * 1000).rounded())) ms").monospacedDigit()
+                        }
+                        Slider(value: $settings.judgeWindow, in: 0.05...0.25, step: 0.01)
+                    } header: {
+                        Text("判定")
+                    } footer: {
+                        Text("この幅の中で押せば OK、外なら「早い」「遅い」になります。")
+                    }
+                    Section("音") {
+                        slider("右手", $settings.rightVolume, Theme.handR)
+                        slider("左手", $settings.leftVolume, Theme.handL)
+                        slider("メトロノーム", $settings.metronomeVolume, Theme.ink)
+                        Toggle("メトロノーム", isOn: $settings.metronomeOn)
+                        Toggle(isOn: $settings.playInputSound) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("弾いた音をアプリで鳴らす")
+                                Text("音の出る電子ピアノならオフに").font(.ui(11)).foregroundStyle(Theme.sub)
+                            }
+                        }
+                        Toggle(isOn: $settings.playPracticedHands) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("練習する手もお手本の音を鳴らす")
+                                Text("MIDI キーボードで弾くときはオフに").font(.ui(11)).foregroundStyle(Theme.sub)
+                            }
                         }
                     }
                 }
                 .font(.ui(14))
-                .padding(20)
-                .frame(width: 340)
+                .frame(width: 400, height: 640)
             }
     }
 
@@ -167,6 +176,62 @@ private struct SoundButton: View {
             Text(label).frame(width: 96, alignment: .leading).foregroundStyle(color)
             Slider(value: value, in: 0...1).tint(color)
         }
+    }
+}
+
+/// ループ範囲（開始小節〜終了小節）
+private struct LoopButton: View {
+    let model: PracticeModel
+    @State private var showing = false
+    @State private var start = 0
+    @State private var end = 0
+
+    var body: some View {
+        Button {
+            start = model.loopMeasures.lowerBound
+            end = model.loopMeasures.upperBound
+            showing = true
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "repeat")
+                Text(model.loopText).font(.ui(13, .medium))
+            }
+            .foregroundStyle(model.settings.loopRange == nil ? Theme.ink : .white)
+            .padding(.horizontal, 12)
+            .frame(height: 44)
+            .background(model.settings.loopRange == nil ? Theme.button : Theme.handR,
+                        in: RoundedRectangle(cornerRadius: 10))
+        }
+        .popover(isPresented: $showing) {
+            let count = model.score.measures.count
+            VStack(alignment: .leading, spacing: 16) {
+                Text("ループ範囲").font(.ui(15, .bold))
+                Stepper("開始 \(number(start))小節", value: $start, in: 0...max(0, count - 1))
+                    .onChange(of: start) { _, v in if end < v { end = v } }
+                Stepper("終了 \(number(end))小節", value: $end, in: 0...max(0, count - 1))
+                    .onChange(of: end) { _, v in if start > v { start = v } }
+                HStack {
+                    Button("曲全体") {
+                        model.settings.loopRange = nil
+                        showing = false
+                    }
+                    .buttonStyle(.bordered)
+                    Spacer()
+                    Button("この範囲で練習") {
+                        model.settings.loopRange = (start == 0 && end == count - 1) ? nil : start...end
+                        showing = false
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            }
+            .font(.ui(14))
+            .padding(20)
+            .frame(width: 320)
+        }
+    }
+
+    private func number(_ index: Int) -> String {
+        model.score.measures[safe: index]?.number ?? String(index + 1)
     }
 }
 

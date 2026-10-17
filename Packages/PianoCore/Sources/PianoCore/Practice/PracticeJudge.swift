@@ -67,15 +67,18 @@ public final class PracticeJudge: Sendable {
         self.clock = clock
     }
 
-    /// 設定を反映する。waitEnabled は MIDI 入力があるときだけ true にする
+    /// 設定を反映する。waitEnabled は MIDI 入力があるときだけ true にする。
+    /// loop は判定する範囲（ループの助走の小節は含めない）
     public func configure(settings: PracticeSettings, waitEnabled: Bool, loop: Range<Double>?, atHost host: Double) {
-        let groups = Self.makeGroups(score: score, hands: settings.hands)
+        let groups = Self.makeGroups(score: score, hands: settings.hands).filter { g in
+            loop.map { $0.contains(g.beat) } ?? true
+        }
         state.withLock { s in
-            let handsChanged = s.settings.hands != settings.hands
+            let changed = s.settings.hands != settings.hands || s.loopRange != loop
             s.settings = settings
             s.waitEnabled = waitEnabled && settings.waitForCorrectKey
             s.loopRange = loop
-            if handsChanged || s.groups.isEmpty {
+            if changed || s.groups.isEmpty {
                 s.groups = groups
                 s.snapshot.results = [:]
                 s.snapshot.hits = 0

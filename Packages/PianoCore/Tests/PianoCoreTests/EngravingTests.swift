@@ -103,3 +103,25 @@ import Testing
         #expect(abs(g.x(slot: 0, fraction: 0.25) - (146 + 18 + (257.5 - 26) / 4)) < 0.001)
     }
 }
+
+@Suite struct ScrubTests {
+    @Test func beatFromX() {
+        let score = SampleScores.odeToJoy
+        let g = ScoreGeometry(size: ScoreGeometry.baseSize)
+        // 1小節目の拍 1 の x（仕様 5.1 の式）から拍へ戻す
+        let x = g.x(slot: 0, fraction: 0.25)
+        #expect(abs(ScorePaging.beat(atX: x, page: 0, score: score, geometry: g) - 1) < 1e-9)
+        // 3小節目の頭
+        #expect(abs(ScorePaging.beat(atX: g.x(slot: 2, fraction: 0), page: 0, score: score, geometry: g) - 8) < 1e-9)
+        // 左端より左は曲の頭、ページの外の右は曲の終わり
+        #expect(ScorePaging.beat(atX: 0, page: 0, score: score, geometry: g) == 0)
+        #expect(ScorePaging.beat(atX: g.size.width + 300, page: 0, score: score, geometry: g) == 16)
+    }
+
+    @Test func snap() {
+        let score = SampleScores.odeToJoy
+        #expect(ScorePaging.snapToBeat(5.4, score: score) == 5)
+        #expect(ScorePaging.snapToBeat(5.6, score: score) == 6)
+        #expect(ScorePaging.snapToBeat(15.9, score: score) == 16)
+    }
+}

@@ -7,12 +7,15 @@ struct ScoreCanvas: View {
     let engraving: EngravedScore
     let beat: Double
     let settings: PracticeSettings
+    /// ドラッグ中は表示するページを固定する
+    var fixedPage: Int?
 
     var body: some View {
         Canvas { context, size in
             let geo = ScoreGeometry(size: size)
             context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Theme.panel))
-            let paging = ScorePaging.state(score: score, beat: beat, rate: settings.tempoRatio)
+            let paging = fixedPage.map { (page: $0, slide: Double?.none) }
+                ?? ScorePaging.state(score: score, beat: beat, rate: settings.tempoRatio)
             if let slide = paging.slide {
                 let t = 1 - pow(1 - slide, 3)
                 var previous = context

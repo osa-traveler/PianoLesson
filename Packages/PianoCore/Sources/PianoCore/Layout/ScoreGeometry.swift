@@ -71,3 +71,29 @@ public enum ScorePaging {
         return (page, elapsed / slideSeconds)
     }
 }
+
+extension ScorePaging {
+    /// 譜面の x 座標（そのページ上）に当たる拍。ページの外は前後の小節へ続ける
+    public static func beat(atX x: CGFloat, page: Int, score: Score, geometry g: ScoreGeometry) -> Double {
+        guard !score.measures.isEmpty else { return 0 }
+        let slot = Int(((x - g.firstMeasureX) / g.measureWidth).rounded(.down))
+        let index = page * ScoreGeometry.measuresPerPage + slot
+        if index < 0 { return score.startBeat(of: score.measures[0]) }
+        if index >= score.measures.count { return score.lengthBeats }
+        let m = score.measures[index]
+        let inner = g.measureWidth - 26 * g.sx
+        let local = x - g.measureX(slot: slot) - 18 * g.sx
+        let fraction = min(max(Double(local / inner), 0), 0.999)
+        return score.startBeat(of: m) + fraction * score.beat(ofTick: m.lengthTicks)
+    }
+
+    /// 一番近い拍（拍子記号の1拍）にそろえる
+    public static func snapToBeat(_ beat: Double, score: Score) -> Double {
+        guard !score.measures.isEmpty, beat >= 0 else { return beat }
+        let m = score.measures[score.measureIndex(atBeat: beat)]
+        let start = score.startBeat(of: m)
+        let unit = m.time.beatUnit
+        let snapped = start + ((beat - start) / unit).rounded() * unit
+        return min(snapped, score.endBeat(of: m))
+    }
+}

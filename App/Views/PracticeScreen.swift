@@ -62,8 +62,19 @@ private struct PlayField: View {
         let settings = model.settings
         let highlights = KeyStates.compute(score: model.score, beat: beat, hands: settings.hands)
         VStack(spacing: 0) {
-            ScoreCanvas(score: model.score, engraving: model.engraving, beat: beat, settings: settings)
+            ScoreCanvas(score: model.score, engraving: model.engraving, beat: beat, settings: settings,
+                        fixedPage: model.scrubPage)
                 .frame(height: scoreHeight)
+                .contentShape(Rectangle())
+                .gesture(
+                    // タップでその位置へ、ドラッグで再生位置を動かす（レーンと鍵盤も追従する）
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            let size = CGSize(width: layout.width, height: scoreHeight)
+                            model.scrub(toX: value.location.x, geometry: ScoreGeometry(size: size))
+                        }
+                        .onEnded { _ in model.endScrub() }
+                )
             LaneCanvas(score: model.score, layout: layout, beat: beat, settings: settings, judge: judge)
                 .frame(height: laneHeight)
                 .overlay(alignment: .topTrailing) {

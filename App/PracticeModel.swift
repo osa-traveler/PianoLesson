@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import Observation
 import PianoCore
@@ -85,6 +86,12 @@ final class PracticeModel {
         }
         if defaults.bool(forKey: "darkLane") { settings.darkLane = true }
         if defaults.bool(forKey: "autoplay") { togglePlay() }
+        // 譜面のドラッグの再現: `-demoScrubX 700`（13インチの譜面パネルの座標）
+        if let x = defaults.string(forKey: "demoScrubX").flatMap(Double.init) {
+            let geometry = ScoreGeometry(size: CGSize(width: 1376, height: 326))
+            scrub(toX: x, geometry: geometry)
+            endScrub()
+        }
         // 打鍵の再現: `-demoPress 64,70`
         if let list = defaults.string(forKey: "demoPress") {
             let now = CACurrentMediaTime()
@@ -198,12 +205,49 @@ final class PracticeModel {
     }
 
     func seek(toMeasure index: Int) {
+        seek(toBeat: preRollStart(measure: index))
+    }
+
+    func seek(toBeat beat: Double) {
         let now = CACurrentMediaTime()
         clock.setGate(beat: nil, atHost: now)
-        clock.seek(toBeat: preRollStart(measure: index), atHost: now)
-        judge.reset(toBeat: preRollStart(measure: index), atHost: now, recordPass: false)
+        clock.seek(toBeat: beat, atHost: now)
+        judge.reset(toBeat: beat, atHost: now, recordPass: false)
         seekRevision += 1
         AudioEngine.shared.resetPosition()
+    }
+
+    // MARK: - 譜面のドラッグで位置を変える
+
+    /// ドラッグ中に表示を固定するページ（nil ならドラッグしていない）
+    private(set) var scrubPage: Int?
+    @ObservationIgnored private var resumeAfterScrub = false
+
+    /// 動かせる範囲（ループ範囲と、その前の助走の1小節）
+    private var scrubRange: ClosedRange<Double> {
+        let range = loopMeasures
+        let start = preRollStart(measure: range.lowerBound)
+        let end = score.measures[safe: range.upperBound].map { score.endBeat(of: $0) } ?? score.lengthBeats
+        return start...max(start, end - 1e-6)
+    }
+
+    func scrub(toX x: CGFloat, geometry: ScoreGeometry) {
+        if scrubPage == nil {
+            resumeAfterScrub = isPlaying
+            if isPlaying { togglePlay() }
+            scrubPage = ScorePaging.state(score: score, beat: currentBeat, rate: settings.tempoRatio).page
+        }
+        guard let page = scrubPage else { return }
+        let beat = ScorePaging.beat(atX: x, page: page, score: score, geometry: geometry)
+        seek(toBeat: min(max(beat, scrubRange.lowerBound), scrubRange.upperBound))
+    }
+
+    func endScrub() {
+        guard scrubPage != nil else { return }
+        let snapped = ScorePaging.snapToBeat(currentBeat, score: score)
+        seek(toBeat: min(max(snapped, scrubRange.lowerBound), scrubRange.upperBound))
+        scrubPage = nil
+        if resumeAfterScrub { togglePlay() }
     }
 
     var currentBeat: Double { clock.beat(atHost: CACurrentMediaTime()) }

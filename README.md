@@ -3,8 +3,15 @@
 個人用の iPad ピアノ練習アプリ。MusicXML の楽譜を、大譜表・落下レーン・鍵盤の3段で表示する。
 落下レーンには五線（ト音・ヘ音の各5本線）を縦線として通し、譜面の音と鍵盤の位置をつなぐ。
 
-- 仕様: [Docs/PianoPractice_SPEC.md](Docs/PianoPractice_SPEC.md)
-- 実装計画: [Docs/IMPLEMENTATION_PLAN.md](Docs/IMPLEMENTATION_PLAN.md)
+## ドキュメント
+
+| 文書 | 内容 |
+|---|---|
+| [Docs/USER_GUIDE.md](Docs/USER_GUIDE.md) | 操作方法・実装済みの仕様（仕様書との違いを含む） |
+| [Docs/STATUS.md](Docs/STATUS.md) | 作業状況・課題・実機での確認項目 |
+| [Docs/WORKLOG.md](Docs/WORKLOG.md) | 作業ログ |
+| [Docs/PianoPractice_SPEC.md](Docs/PianoPractice_SPEC.md) | 元の仕様書（デザイン案から起こしたもの） |
+| [Docs/IMPLEMENTATION_PLAN.md](Docs/IMPLEMENTATION_PLAN.md) | 実装計画（前提・構成・フェーズ） |
 
 ## ビルド
 

@@ -74,7 +74,7 @@ final class PracticeModel {
     private func applyDebugLaunchArguments() {
         let defaults = UserDefaults.standard
         if let beat = defaults.object(forKey: "startBeat") as? String, let b = Double(beat) {
-            clock.seek(toBeat: b, atHost: CACurrentMediaTime())
+            seek(toBeat: b)
         }
         if let hands = defaults.string(forKey: "hands"), let mode = HandsMode(rawValue: hands) {
             settings.hands = mode

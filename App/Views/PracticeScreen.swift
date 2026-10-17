@@ -99,13 +99,6 @@ private struct PlayField: View {
                             .padding(.top, 28)
                     }
                 }
-                .overlay(alignment: .bottomLeading) {
-                    if settings.showStaffGuides {
-                        GuideLegend()
-                            .padding(.leading, 12)
-                            .padding(.bottom, 14)
-                    }
-                }
                 .contentShape(Rectangle())
                 .gesture(
                     // 上下にドラッグして再生位置を動かす（下へ引くと先へ進む）

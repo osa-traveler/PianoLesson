@@ -171,34 +171,6 @@ struct NextChip: View {
     }
 }
 
-/// 五線ガイドと手の凡例（レーン左下）
-struct GuideLegend: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            row(Theme.handR, dashed: false, "ト音記号の5本線（右手）")
-            row(Theme.handL, dashed: false, "ヘ音記号の5本線（左手）")
-            row(Theme.midC, dashed: true, "真ん中のド（加線）")
-            Text("線の上に落ちる音＝譜面でも線の上")
-                .font(.ui(11))
-                .foregroundStyle(Theme.sub)
-        }
-        .padding(10)
-        .background(.white.opacity(0.85), in: RoundedRectangle(cornerRadius: 8))
-    }
-
-    private func row(_ color: Color, dashed: Bool, _ label: String) -> some View {
-        HStack(spacing: 6) {
-            Path { p in
-                p.move(to: CGPoint(x: 0, y: 1))
-                p.addLine(to: CGPoint(x: 18, y: 1))
-            }
-            .stroke(color, style: StrokeStyle(lineWidth: 2, dash: dashed ? [4, 3] : []))
-            .frame(width: 18, height: 2)
-            Text(label).font(.ui(11, .medium)).foregroundStyle(Theme.ink)
-        }
-    }
-}
-
 /// 今回の通しの正確さ
 struct AccuracyChip: View {
     let hits: Int

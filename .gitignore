@@ -1,0 +1,16 @@
+.DS_Store
+*.xcodeproj/
+xcuserdata/
+DerivedData/
+.build/
+.swiftpm/
+build/
+
+# 個人の署名情報
+Config/Local.xcconfig
+
+# 著作権のある楽譜・個人のファイルは公開しない
+*.mxl
+*.musicxml
+Docs/sample*
+!Packages/PianoCore/Tests/**/Fixtures/*.musicxml

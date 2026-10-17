@@ -1,0 +1,2 @@
+// Local.xcconfig にコピーして自分のチームIDを入れる（git 管理外）
+DEVELOPMENT_TEAM = XXXXXXXXXX

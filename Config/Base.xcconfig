@@ -1,0 +1,4 @@
+// 共通設定。個人の署名情報は Local.xcconfig（git 管理外）に書く。
+CODE_SIGN_STYLE = Automatic
+
+#include? "Local.xcconfig"

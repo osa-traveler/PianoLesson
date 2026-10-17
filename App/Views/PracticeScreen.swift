@@ -24,9 +24,11 @@ struct PracticeScreen: View {
                 TopBar(model: model, onBack: onBack)
                     .frame(height: Self.topBarHeight)
                 TimelineView(.animation(paused: !model.isPlaying)) { context in
-                    let _ = model.seekRevision
-                    let beat = model.clock.beat(atHost: Self.hostTime(for: context.date))
-                    PlayField(model: model, layout: layout, beat: beat,
+                    let _ = (model.seekRevision, model.inputRevision)
+                    let host = Self.hostTime(for: context.date)
+                    let beat = model.clock.beat(atHost: host)
+                    PlayField(model: model, layout: layout, beat: beat, host: host,
+                              judge: model.judge.snapshot(),
                               scoreHeight: scoreHeight, laneHeight: laneHeight)
                 }
             }
@@ -51,6 +53,8 @@ private struct PlayField: View {
     let model: PracticeModel
     let layout: KeyboardLayout
     let beat: Double
+    let host: Double
+    let judge: JudgeSnapshot
     let scoreHeight: CGFloat
     let laneHeight: CGFloat
 
@@ -60,13 +64,29 @@ private struct PlayField: View {
         VStack(spacing: 0) {
             ScoreCanvas(score: model.score, engraving: model.engraving, beat: beat, settings: settings)
                 .frame(height: scoreHeight)
-            LaneCanvas(score: model.score, layout: layout, beat: beat, settings: settings)
+            LaneCanvas(score: model.score, layout: layout, beat: beat, settings: settings, judge: judge)
                 .frame(height: laneHeight)
                 .overlay(alignment: .topTrailing) {
-                    NextChip(notes: KeyStates.nextNotes(score: model.score, beat: beat, hands: settings.hands),
-                             naming: settings.naming)
-                        .padding(.top, 28)
-                        .padding(.trailing, 16)
+                    VStack(alignment: .trailing, spacing: 8) {
+                        NextChip(notes: KeyStates.nextNotes(score: model.score, beat: beat, hands: settings.hands),
+                                 naming: settings.naming)
+                        if judge.judged > 0 {
+                            AccuracyChip(hits: judge.hits, judged: judge.judged)
+                        }
+                    }
+                    .padding(.top, 28)
+                    .padding(.trailing, 16)
+                }
+                .overlay(alignment: .top) {
+                    if judge.isWaiting {
+                        Text("正しい鍵を押すと進みます")
+                            .font(.ui(14, .bold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 14)
+                            .frame(height: 32)
+                            .background(Theme.ink.opacity(0.85), in: Capsule())
+                            .padding(.top, 28)
+                    }
                 }
                 .overlay(alignment: .bottomLeading) {
                     if settings.showStaffGuides {
@@ -76,8 +96,14 @@ private struct PlayField: View {
                     }
                 }
             KeyboardCanvas(layout: layout, highlights: highlights,
-                           showGuides: settings.showStaffGuides, naming: settings.naming)
+                           showGuides: settings.showStaffGuides, naming: settings.naming,
+                           pressed: judge.pressed, recentWrong: judge.recentWrong, host: host)
                 .frame(height: PracticeScreen.keyboardHeight)
+                .overlay {
+                    KeyboardTouchView(layout: layout, blackLength: KeyboardCanvas.blackKeyLength) { event in
+                        model.handleTouch(event)
+                    }
+                }
         }
     }
 }

@@ -7,6 +7,35 @@ struct KeyboardCanvas: View {
     let highlights: [Int: KeyHighlight]
     let showGuides: Bool
     let naming: Naming
+    /// 実際に押している鍵（MIDI・タッチ）
+    var pressed: [Int: PressedKey] = [:]
+    /// 離したばかりの間違いの鍵（ホスト時刻）
+    var recentWrong: [Int: Double] = [:]
+    var host: Double = 0
+
+    static let blackKeyLength: CGFloat = 92
+
+    /// 押した鍵の色。正解は手の色、違う鍵は赤（離した後 0.3 秒で消える）
+    private func pressColor(_ midi: Int) -> Color? {
+        if let key = pressed[midi] {
+            switch key.feedback {
+            case .correct(let hand): return Theme.hand(hand)
+            case .wrong: return Theme.miss
+            }
+        }
+        if let t = recentWrong[midi], host - t < 0.3 {
+            return Theme.miss.opacity(1 - (host - t) / 0.3)
+        }
+        return nil
+    }
+
+    /// 押している間は少し沈んだ表現（上端に影）
+    private func drawSunk(_ context: inout GraphicsContext, rect: CGRect) {
+        let shadow = CGRect(x: rect.minX, y: 0, width: rect.width, height: 10)
+        context.fill(Path(shadow), with: .linearGradient(
+            Gradient(colors: [.black.opacity(0.35), .black.opacity(0)]),
+            startPoint: CGPoint(x: rect.midX, y: 0), endPoint: CGPoint(x: rect.midX, y: 10)))
+    }
 
     var body: some View {
         Canvas { context, size in
@@ -39,6 +68,12 @@ struct KeyboardCanvas: View {
             case nil:
                 context.fill(shape.path(in: rect), with: .color(.white))
             }
+            if let color = pressColor(midi) {
+                context.fill(shape.path(in: rect), with: .color(color))
+                nameColor = .white
+                nameWeight = .bold
+            }
+            if pressed[midi] != nil { drawSunk(&context, rect: rect) }
             context.fill(Path(CGRect(x: rect.maxX - 1, y: 0, width: 1, height: height)),
                          with: .color(Theme.ruleStrong))
 
@@ -67,7 +102,7 @@ struct KeyboardCanvas: View {
 
     private func drawBlackKeys(_ context: inout GraphicsContext, height: CGFloat) {
         let bw = layout.blackKeyWidth
-        let length = 92 * height / PracticeScreen.keyboardHeight
+        let length = Self.blackKeyLength * height / PracticeScreen.keyboardHeight
         let shape = UnevenRoundedRectangle(bottomLeadingRadius: 3, bottomTrailingRadius: 3)
         for midi in layout.blackKeys {
             let rect = CGRect(x: layout.keyCenterX(midi: midi) - bw / 2, y: 0, width: bw, height: length)
@@ -82,6 +117,10 @@ struct KeyboardCanvas: View {
             case nil:
                 context.fill(shape.path(in: rect), with: .color(Theme.ink))
             }
+            if let color = pressColor(midi) {
+                context.fill(shape.path(in: rect), with: .color(color))
+            }
+            if pressed[midi] != nil { drawSunk(&context, rect: rect) }
         }
     }
 }

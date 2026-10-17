@@ -29,6 +29,8 @@ public struct PracticeSettings: Codable, Sendable, Equatable {
     public var metronomeOn = true
     /// 練習する手の音もアプリが鳴らす（お手本）。MIDI キーボードで弾くときはオフにする
     public var playPracticedHands = true
+    /// 弾いた音（MIDI・画面の鍵盤）をアプリで鳴らす。音の出る電子ピアノならオフにする
+    public var playInputSound = true
 
     /// 打鍵判定の許容幅（秒）
     public var judgeWindow = 0.12
@@ -62,5 +64,6 @@ public struct PracticeSettings: Codable, Sendable, Equatable {
         metronomeOn = try c.decodeIfPresent(Bool.self, forKey: .metronomeOn) ?? d.metronomeOn
         playPracticedHands = try c.decodeIfPresent(Bool.self, forKey: .playPracticedHands) ?? d.playPracticedHands
         judgeWindow = try c.decodeIfPresent(Double.self, forKey: .judgeWindow) ?? d.judgeWindow
+        playInputSound = try c.decodeIfPresent(Bool.self, forKey: .playInputSound) ?? d.playInputSound
     }
 }

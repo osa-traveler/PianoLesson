@@ -32,6 +32,7 @@ struct AppRoot: View {
             }
         }
         .onOpenURL { url in importFile(url) }
+        .onChange(of: MIDIInput.shared.isConnected) { _, _ in practice?.midiConnectionChanged() }
         .onChange(of: scenePhase) { _, phase in
             if phase != .active { practice?.pause(); saveProgress() }
         }
@@ -47,7 +48,15 @@ struct AppRoot: View {
     private func open(_ song: SongEntry) {
         do {
             let score = try library.loadScore(for: song)
-            practice = PracticeModel(score: score, songID: song.id, settings: song.settings, lastBeat: song.lastBeat)
+            let model = PracticeModel(score: score, songID: song.id, settings: song.settings, lastBeat: song.lastBeat)
+            let id = song.id
+            model.onPassCompleted = { [library] pass, settings in
+                library.update(id) {
+                    $0.accuracyHistory.append(AccuracyRecord(date: .now, accuracy: pass.accuracy,
+                                                             tempoRatio: settings.tempoRatio, hands: settings.hands))
+                }
+            }
+            practice = model
         } catch {
             notice = Notice(title: "楽譜を開けません", message: error.localizedDescription)
         }
@@ -80,6 +89,7 @@ struct AppRoot: View {
         practice?.pause()
         saveProgress()
         AudioEngine.shared.detach()
+        practice?.close()
         practice = nil
     }
 

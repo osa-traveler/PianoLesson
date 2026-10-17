@@ -198,7 +198,9 @@ final class AudioEngine: @unchecked Sendable {
             state.withLock { $0.lastBeat = nil }
             return
         }
-        let beat = clock.beat(atHost: CACurrentMediaTime() + outputLatency.withLock { $0 })
+        var beat = clock.beat(atHost: CACurrentMediaTime() + outputLatency.withLock { $0 })
+        // 待機モードで止まっている拍の音（自動演奏の手）は、正しい鍵が押されて進むまで鳴らさない
+        if let gate = clock.gateBeat, beat >= gate - 1e-9 { beat = gate - 1e-6 }
         guard let last = snapshot.lastBeat, beat >= last, beat - last < 2 else {
             // 開始直後・ループ・シーク
             if snapshot.lastBeat != nil { allNotesOff() }

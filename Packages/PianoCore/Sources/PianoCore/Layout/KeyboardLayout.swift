@@ -37,6 +37,19 @@ public struct KeyboardLayout: Sendable, Equatable {
         Pitch.isBlack(midi) ? blackKeyWidth : whiteKeyWidth
     }
 
+    /// 座標にある鍵。黒鍵（上から blackLength まで）を先に調べる
+    public func key(at point: CGPoint, blackLength: CGFloat) -> Int? {
+        guard point.x >= 0, point.x < width, point.y >= 0 else { return nil }
+        if point.y < blackLength {
+            for midi in blackKeys where abs(point.x - keyCenterX(midi: midi)) <= blackKeyWidth / 2 {
+                return midi
+            }
+        }
+        let index = Int(point.x / whiteKeyWidth)
+        let whites = whiteKeys
+        return whites.indices.contains(index) ? whites[index] : nil
+    }
+
     /// 白鍵の通し番号（C-1 = 0）。黒鍵には使わない。
     static func whiteOrdinal(_ midi: Int) -> Int {
         let octave = Int((Double(midi) / 12).rounded(.down))

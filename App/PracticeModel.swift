@@ -10,6 +10,10 @@ final class PracticeModel {
     let engraving: EngravedScore
     let songID: UUID
     @ObservationIgnored let clock: PracticeClock
+    @ObservationIgnored let judge: PracticeJudge
+    @ObservationIgnored private var updateTimer: Timer?
+    /// 通し練習が終わったときに呼ぶ（ライブラリへの記録）
+    @ObservationIgnored var onPassCompleted: ((PassResult, PracticeSettings) -> Void)?
 
     var settings: PracticeSettings {
         didSet {
@@ -21,8 +25,18 @@ final class PracticeModel {
                 applyLoop()
                 rewind()
             }
+            if settings.hands != oldValue.hands || settings.waitForCorrectKey != oldValue.waitForCorrectKey
+                || settings.judgeWindow != oldValue.judgeWindow || settings.loopRange != oldValue.loopRange {
+                configureJudge()
+            }
+            if settings.playInputSound != oldValue.playInputSound { configureInput() }
         }
     }
+
+    /// 入力があったときに画面を描き直させる（停止中でも押した鍵を表示する）
+    private(set) var inputRevision = 0
+    /// 待機モードは MIDI キーボードがつながっているときだけ使える
+    var isWaitAvailable: Bool { MIDIInput.shared.isConnected }
 
     private(set) var isPlaying = false
     /// 停止中に位置が変わったとき、画面を描き直させるためのカウンタ
@@ -34,17 +48,21 @@ final class PracticeModel {
         self.settings = settings
         engraving = EngravedScore(score: score)
         clock = PracticeClock(tempoMap: score.tempoMap)
+        judge = PracticeJudge(score: score, clock: clock)
         if let range = settings.loopRange, range.upperBound >= score.measures.count {
             self.settings.loopRange = nil
         }
         clock.setRate(self.settings.tempoRatio, atHost: CACurrentMediaTime())
         applyLoop()
         AudioEngine.shared.attach(score: score, clock: clock, settings: self.settings)
+        configureJudge()
+        configureInput()
         if let lastBeat, lastBeat > 0, lastBeat < score.lengthBeats {
             seek(toMeasure: score.measureIndex(atBeat: lastBeat))
         } else {
             rewind()
         }
+        startUpdates()
         #if DEBUG
         applyDebugLaunchArguments()
         #endif
@@ -63,6 +81,13 @@ final class PracticeModel {
         if defaults.string(forKey: "naming") == "doremi" { settings.naming = .doremi }
         if defaults.bool(forKey: "darkLane") { settings.darkLane = true }
         if defaults.bool(forKey: "autoplay") { togglePlay() }
+        // 打鍵の再現: `-demoPress 64,70`
+        if let list = defaults.string(forKey: "demoPress") {
+            let now = CACurrentMediaTime()
+            for midi in list.split(separator: ",").compactMap({ Int($0) }) {
+                handleTouch(.down(midi: midi, velocity: 90, host: now))
+            }
+        }
     }
     #endif
 
@@ -79,6 +104,68 @@ final class PracticeModel {
     private func preRollStart(measure: Int) -> Double {
         guard score.measures.indices.contains(measure) else { return -4 }
         return score.startBeat(of: score.measures[measure]) - leadIn(before: measure)
+    }
+
+    // MARK: - 判定・入力
+
+    private var loopBeats: Range<Double>? {
+        let range = loopMeasures
+        guard score.measures.indices.contains(range.lowerBound),
+              score.measures.indices.contains(range.upperBound) else { return nil }
+        return preRollStart(measure: range.lowerBound)..<score.endBeat(of: score.measures[range.upperBound])
+    }
+
+    func configureJudge() {
+        judge.configure(settings: settings, waitEnabled: isWaitAvailable, loop: loopBeats, atHost: CACurrentMediaTime())
+    }
+
+    /// MIDI と画面の鍵盤の入力を判定と音へつなぐ（MIDI スレッドから直接呼ばれる）
+    private func configureInput() {
+        let judge = self.judge
+        let playSound = settings.playInputSound
+        MIDIInput.shared.handler.set { [weak self] event in
+            Self.route(event, judge: judge, playSound: playSound)
+            Task { @MainActor in self?.inputRevision += 1 }
+        }
+    }
+
+    nonisolated private static func route(_ event: KeyEvent, judge: PracticeJudge, playSound: Bool) {
+        switch event {
+        case .down(let midi, let velocity, let host):
+            judge.noteOn(midi: midi, atHost: host)
+            if playSound { AudioEngine.shared.playLive(midi: midi, velocity: velocity) }
+        case .up(let midi, let host):
+            judge.noteOff(midi: midi, atHost: host)
+            if playSound { AudioEngine.shared.stopLive(midi: midi) }
+        }
+    }
+
+    /// 画面の鍵盤のタッチ
+    func handleTouch(_ event: KeyEvent) {
+        Self.route(event, judge: judge, playSound: settings.playInputSound)
+        inputRevision += 1
+    }
+
+    /// 見逃しの判定・ループの検出・通し練習の記録
+    private func startUpdates() {
+        updateTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.tick() }
+        }
+    }
+
+    private func tick() {
+        judge.update(atHost: CACurrentMediaTime())
+        for pass in judge.takeCompletedPasses() { onPassCompleted?(pass, settings) }
+    }
+
+    func close() {
+        updateTimer?.invalidate()
+        updateTimer = nil
+        MIDIInput.shared.handler.set(nil)
+    }
+
+    func midiConnectionChanged() {
+        configureJudge()
     }
 
     private func applyLoop() {
@@ -109,7 +196,10 @@ final class PracticeModel {
     }
 
     func seek(toMeasure index: Int) {
-        clock.seek(toBeat: preRollStart(measure: index), atHost: CACurrentMediaTime())
+        let now = CACurrentMediaTime()
+        clock.setGate(beat: nil, atHost: now)
+        clock.seek(toBeat: preRollStart(measure: index), atHost: now)
+        judge.reset(toBeat: preRollStart(measure: index), atHost: now, recordPass: false)
         seekRevision += 1
         AudioEngine.shared.resetPosition()
     }

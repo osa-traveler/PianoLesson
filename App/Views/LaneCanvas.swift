@@ -7,6 +7,7 @@ struct LaneCanvas: View {
     let layout: KeyboardLayout
     let beat: Double
     let settings: PracticeSettings
+    var judge = JudgeSnapshot()
 
     var body: some View {
         Canvas { context, size in
@@ -17,6 +18,7 @@ struct LaneCanvas: View {
             if settings.showStaffGuides {
                 drawGuides(&context, size: size, palette: palette)
             }
+            drawJudgements(&context, lane: lane)
             // 判定ライン
             context.fill(Path(CGRect(x: 0, y: size.height - 3, width: size.width, height: 3)),
                          with: .color(palette.judgeLine))
@@ -79,6 +81,37 @@ struct LaneCanvas: View {
                 let fontSize: CGFloat = name.count > 2 && black ? 11 : 13
                 c.draw(Text(name).font(.ui(fontSize, .bold)).foregroundStyle(.white),
                        at: CGPoint(x: rect.midX, y: rect.maxY - 4), anchor: .bottom)
+            }
+        }
+    }
+
+    /// 判定結果: ノーツが判定ラインで消えるときに短く表示（OK は手の色で光る、ミスは赤い縁）
+    private func drawJudgements(_ context: inout GraphicsContext, lane: LaneMetrics) {
+        guard !judge.results.isEmpty else { return }
+        let fade = 0.75  // 拍
+        for note in score.playNotes(overlapping: beat - fade, beat + 0.5) {
+            guard let result = judge.results[note.id], layout.contains(note.midi) else { continue }
+            let age = beat - note.startBeat
+            guard age > -0.5, age < fade else { continue }
+            let alpha = min(1, max(0, 1 - max(age, 0) / fade))
+            let black = Pitch.isBlack(note.midi)
+            let width = (black ? layout.blackKeyWidth - 6 : layout.whiteKeyWidth - 10) + 8
+            let rect = CGRect(x: layout.keyCenterX(midi: note.midi) - width / 2, y: lane.height - 26,
+                              width: width, height: 22)
+            var c = context
+            c.opacity = alpha
+            switch result.judgement {
+            case .ok:
+                c.fill(Path(roundedRect: rect.insetBy(dx: -4, dy: -4), cornerRadius: 10),
+                       with: .color(Theme.tint(note.hand)))
+                c.fill(Path(roundedRect: rect, cornerRadius: 8), with: .color(Theme.hand(note.hand)))
+                c.draw(Text("OK").font(.ui(12, .bold)).foregroundStyle(.white),
+                       at: CGPoint(x: rect.midX, y: rect.midY))
+            case .early, .late, .missed:
+                c.stroke(Path(roundedRect: rect, cornerRadius: 8), with: .color(Theme.miss), lineWidth: 3)
+                let label = result.judgement == Judgement.early ? "早い" : result.judgement == Judgement.late ? "遅い" : "ミス"
+                c.draw(Text(label).font(.ui(11, .bold)).foregroundStyle(Theme.miss),
+                       at: CGPoint(x: rect.midX, y: rect.minY - 9))
             }
         }
     }
@@ -163,5 +196,23 @@ struct GuideLegend: View {
             .frame(width: 18, height: 2)
             Text(label).font(.ui(11, .medium)).foregroundStyle(Theme.ink)
         }
+    }
+}
+
+/// 今回の通しの正確さ
+struct AccuracyChip: View {
+    let hits: Int
+    let judged: Int
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text("正確さ").font(.ui(12, .bold)).foregroundStyle(Theme.sub)
+            Text("\(Int((Double(hits) / Double(max(judged, 1)) * 100).rounded()))%")
+                .font(.ui(15, .bold).monospacedDigit()).foregroundStyle(Theme.ink)
+        }
+        .padding(.horizontal, 12)
+        .frame(height: 32)
+        .background(.white, in: RoundedRectangle(cornerRadius: 10))
+        .shadow(color: .black.opacity(0.08), radius: 6, y: 2)
     }
 }

@@ -31,6 +31,7 @@ struct TopBar: View {
             tempo
             HandsPicker(selection: $model.settings.hands)
             GuideToggle(isOn: $model.settings.showStaffGuides)
+            WaitToggle(isOn: $model.settings.waitForCorrectKey, isAvailable: model.isWaitAvailable)
             SoundButton(settings: $model.settings)
 
             Button {} label: {
@@ -142,6 +143,12 @@ private struct SoundButton: View {
                     slider("左手", $settings.leftVolume, Theme.handL)
                     slider("メトロノーム", $settings.metronomeVolume, Theme.ink)
                     Toggle("メトロノーム", isOn: $settings.metronomeOn)
+                    Toggle(isOn: $settings.playInputSound) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("弾いた音をアプリで鳴らす")
+                            Text("音の出る電子ピアノならオフに").font(.ui(11)).foregroundStyle(Theme.sub)
+                        }
+                    }
                     Toggle(isOn: $settings.playPracticedHands) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("練習する手もお手本の音を鳴らす")
@@ -160,5 +167,32 @@ private struct SoundButton: View {
             Text(label).frame(width: 96, alignment: .leading).foregroundStyle(color)
             Slider(value: value, in: 0...1).tint(color)
         }
+    }
+}
+
+/// 正しい鍵まで待つ（MIDI キーボードが無いときは使えない）
+private struct WaitToggle: View {
+    @Binding var isOn: Bool
+    let isAvailable: Bool
+
+    var body: some View {
+        let active = isOn && isAvailable
+        Button { isOn.toggle() } label: {
+            VStack(spacing: 0) {
+                HStack(spacing: 5) {
+                    Image(systemName: "hand.raised.fill")
+                    Text("待つ").font(.ui(13, .medium))
+                }
+                if !isAvailable {
+                    Text("MIDIなし").font(.ui(9)).foregroundStyle(Theme.subLight)
+                }
+            }
+            .foregroundStyle(active ? .white : (isAvailable ? Theme.ink : Theme.subLight))
+            .padding(.horizontal, 12)
+            .frame(height: 44)
+            .background(active ? Theme.handR : Theme.button, in: RoundedRectangle(cornerRadius: 10))
+        }
+        .disabled(!isAvailable)
+        .accessibilityHint(isAvailable ? "正しい鍵を押すまで止まります" : "MIDI キーボードをつなぐと使えます")
     }
 }

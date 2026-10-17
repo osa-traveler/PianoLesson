@@ -11,6 +11,8 @@ public final class PracticeClock: Sendable {
         var rate: Double = 1
         /// ループ範囲（原曲時間の秒）。終端に来たら始端へ戻る。
         var loop: Range<Double>?
+        /// ゲート（原曲時間の秒）。ここで時計が止まり、解除されるまで進まない（待機モード）
+        var gate: Double?
     }
 
     public let tempoMap: TempoMap
@@ -64,6 +66,29 @@ public final class PracticeClock: Sendable {
         }
     }
 
+    /// 待機モードのゲート。時計はこの拍を越えない。nil で解除（解除した時刻から進み直す）
+    public func setGate(beat: Double?, atHost host: Double) {
+        let gate = beat.map { tempoMap.seconds(atBeat: $0) }
+        state.withLock { s in
+            guard s.gate != gate else { return }
+            s.anchorSeconds = Self.seconds(in: s, host: host)
+            s.anchorHost = host
+            s.gate = gate
+        }
+    }
+
+    public var gateBeat: Double? {
+        state.withLock { $0.gate }.map { tempoMap.beat(atSeconds: $0) }
+    }
+
+    /// ゲートで止まっているか
+    public func isHeld(atHost host: Double) -> Bool {
+        state.withLock { s in
+            guard let gate = s.gate, s.running else { return false }
+            return s.anchorSeconds + (host - s.anchorHost) * s.rate >= gate
+        }
+    }
+
     /// 拍で指定したループ範囲。nil で解除。
     public func setLoop(beats: Range<Double>?) {
         let loop = beats.map { tempoMap.seconds(atBeat: $0.lowerBound)..<tempoMap.seconds(atBeat: $0.upperBound) }
@@ -73,6 +98,7 @@ public final class PracticeClock: Sendable {
     private static func seconds(in s: State, host: Double) -> Double {
         var t = s.anchorSeconds
         if s.running { t += (host - s.anchorHost) * s.rate }
+        if let gate = s.gate, t > gate, s.anchorSeconds <= gate { t = gate }
         if let loop = s.loop, t >= loop.upperBound, loop.upperBound > loop.lowerBound {
             let span = loop.upperBound - loop.lowerBound
             t = loop.lowerBound + (t - loop.lowerBound).truncatingRemainder(dividingBy: span)

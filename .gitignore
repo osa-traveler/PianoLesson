@@ -15,3 +15,6 @@ Config/Local.xcconfig
 Docs/sample*
 !Packages/PianoCore/Tests/**/Fixtures/*.musicxml
 !Packages/PianoCore/Tests/**/Fixtures/*.mxl
+
+# ピアノ音源（scripts/fetch-soundfont.sh で取得）
+App/Resources/Sounds/*.sf2

@@ -31,6 +31,7 @@ struct TopBar: View {
             tempo
             HandsPicker(selection: $model.settings.hands)
             GuideToggle(isOn: $model.settings.showStaffGuides)
+            SoundButton(settings: $model.settings)
 
             Button {} label: {
                 HStack(spacing: 6) {
@@ -123,6 +124,41 @@ private struct GuideToggle: View {
             .padding(.horizontal, 12)
             .frame(height: 44)
             .background(isOn ? Theme.handR : Theme.button, in: RoundedRectangle(cornerRadius: 10))
+        }
+    }
+}
+
+/// 音量（右手／左手／メトロノーム）とお手本の音
+private struct SoundButton: View {
+    @Binding var settings: PracticeSettings
+    @State private var showing = false
+
+    var body: some View {
+        IconButton(systemName: "speaker.wave.2.fill") { showing = true }
+            .popover(isPresented: $showing) {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("音量").font(.ui(15, .bold))
+                    slider("右手", $settings.rightVolume, Theme.handR)
+                    slider("左手", $settings.leftVolume, Theme.handL)
+                    slider("メトロノーム", $settings.metronomeVolume, Theme.ink)
+                    Toggle("メトロノーム", isOn: $settings.metronomeOn)
+                    Toggle(isOn: $settings.playPracticedHands) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("練習する手もお手本の音を鳴らす")
+                            Text("MIDI キーボードで弾くときはオフに").font(.ui(11)).foregroundStyle(Theme.sub)
+                        }
+                    }
+                }
+                .font(.ui(14))
+                .padding(20)
+                .frame(width: 340)
+            }
+    }
+
+    private func slider(_ label: String, _ value: Binding<Double>, _ color: Color) -> some View {
+        HStack {
+            Text(label).frame(width: 96, alignment: .leading).foregroundStyle(color)
+            Slider(value: value, in: 0...1).tint(color)
         }
     }
 }

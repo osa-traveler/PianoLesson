@@ -13,6 +13,7 @@ final class PracticeModel {
 
     var settings: PracticeSettings {
         didSet {
+            AudioEngine.shared.update(settings: settings)
             if settings.tempoRatio != oldValue.tempoRatio {
                 clock.setRate(settings.tempoRatio, atHost: CACurrentMediaTime())
             }
@@ -38,6 +39,7 @@ final class PracticeModel {
         }
         clock.setRate(self.settings.tempoRatio, atHost: CACurrentMediaTime())
         applyLoop()
+        AudioEngine.shared.attach(score: score, clock: clock, settings: self.settings)
         if let lastBeat, lastBeat > 0, lastBeat < score.lengthBeats {
             seek(toMeasure: score.measureIndex(atBeat: lastBeat))
         } else {
@@ -95,6 +97,7 @@ final class PracticeModel {
         let now = CACurrentMediaTime()
         if isPlaying { clock.pause(atHost: now) } else { clock.start(atHost: now) }
         isPlaying.toggle()
+        AudioEngine.shared.resetPosition()
     }
 
     func pause() {
@@ -108,6 +111,7 @@ final class PracticeModel {
     func seek(toMeasure index: Int) {
         clock.seek(toBeat: preRollStart(measure: index), atHost: CACurrentMediaTime())
         seekRevision += 1
+        AudioEngine.shared.resetPosition()
     }
 
     var currentBeat: Double { clock.beat(atHost: CACurrentMediaTime()) }

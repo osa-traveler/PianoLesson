@@ -38,7 +38,10 @@ struct AppRoot: View {
         .alert(item: $notice) { n in
             Alert(title: Text(n.title), message: Text(n.message), dismissButton: .default(Text("OK")))
         }
-        .onAppear(perform: openDebugScoreIfNeeded)
+        .onAppear {
+            AudioEngine.shared.start()
+            openDebugScoreIfNeeded()
+        }
     }
 
     private func open(_ song: SongEntry) {
@@ -76,6 +79,7 @@ struct AppRoot: View {
     private func closePractice() {
         practice?.pause()
         saveProgress()
+        AudioEngine.shared.detach()
         practice = nil
     }
 

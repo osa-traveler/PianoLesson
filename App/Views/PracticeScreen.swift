@@ -57,7 +57,7 @@ private struct PlayField: View {
         let settings = model.settings
         let highlights = KeyStates.compute(score: model.score, beat: beat, hands: settings.hands)
         VStack(spacing: 0) {
-            ScorePlaceholder(score: model.score, beat: beat)
+            ScoreCanvas(score: model.score, engraving: model.engraving, beat: beat, settings: settings)
                 .frame(height: scoreHeight)
             LaneCanvas(score: model.score, layout: layout, beat: beat, settings: settings)
                 .frame(height: laneHeight)
@@ -78,28 +78,5 @@ private struct PlayField: View {
                            showGuides: settings.showStaffGuides, naming: settings.naming)
                 .frame(height: PracticeScreen.keyboardHeight)
         }
-    }
-}
-
-/// Phase 2 で大譜表に置き換える仮の譜面パネル
-private struct ScorePlaceholder: View {
-    let score: Score
-    let beat: Double
-
-    var body: some View {
-        let index = score.measureIndex(atBeat: beat)
-        ZStack {
-            Theme.panel
-            VStack(spacing: 6) {
-                Text(score.title).font(.ui(17, .bold)).foregroundStyle(Theme.ink)
-                Text(beat < 0 ? "まもなく開始" : "\(score.measures[index].number)小節目 · \(String(format: "%.2f", beat))拍")
-                    .font(.ui(13).monospacedDigit())
-                    .foregroundStyle(Theme.sub)
-                Text("譜面ビューは Phase 2 で実装")
-                    .font(.ui(11))
-                    .foregroundStyle(Theme.subLight)
-            }
-        }
-        .overlay(alignment: .bottom) { Theme.rule.frame(height: 1) }
     }
 }

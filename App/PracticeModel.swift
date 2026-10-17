@@ -1,3 +1,4 @@
+import Foundation
 import Observation
 import PianoCore
 import QuartzCore
@@ -6,6 +7,7 @@ import QuartzCore
 @MainActor @Observable
 final class PracticeModel {
     let score: Score
+    let engraving: EngravedScore
     @ObservationIgnored let clock: PracticeClock
 
     var settings = PracticeSettings() {
@@ -22,11 +24,31 @@ final class PracticeModel {
 
     init(score: Score) {
         self.score = score
+        engraving = EngravedScore(score: score)
         clock = PracticeClock(tempoMap: score.tempoMap)
         clock.setRate(settings.tempoRatio, atHost: CACurrentMediaTime())
         clock.setLoop(beats: preRollStart..<score.lengthBeats)
         clock.seek(toBeat: preRollStart, atHost: CACurrentMediaTime())
+        #if DEBUG
+        applyDebugLaunchArguments()
+        #endif
     }
+
+    #if DEBUG
+    /// 確認用: `-startBeat 5.5` で位置を指定、`-autoplay YES` で再生開始、`-hands left` など
+    private func applyDebugLaunchArguments() {
+        let defaults = UserDefaults.standard
+        if let beat = defaults.object(forKey: "startBeat") as? String, let b = Double(beat) {
+            clock.seek(toBeat: b, atHost: CACurrentMediaTime())
+        }
+        if let hands = defaults.string(forKey: "hands"), let mode = HandsMode(rawValue: hands) {
+            settings.hands = mode
+        }
+        if defaults.string(forKey: "naming") == "doremi" { settings.naming = .doremi }
+        if defaults.bool(forKey: "darkLane") { settings.darkLane = true }
+        if defaults.bool(forKey: "autoplay") { togglePlay() }
+    }
+    #endif
 
     /// 先頭の1小節前から始めて、最初の音が上から落ちてくるようにする
     var preRollStart: Double {

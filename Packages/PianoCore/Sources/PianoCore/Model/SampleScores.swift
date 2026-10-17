@@ -16,7 +16,7 @@ public enum SampleScores {
         var notes: [Note] = []
         for (hand, list) in [(Hand.right, right), (Hand.left, left)] {
             for (start, length, midi) in list {
-                let (type, dots) = notation(forBeats: length)
+                let (type, dots) = NoteType.infer(beats: length)
                 notes.append(Note(id: notes.count, startTick: Int(start * Double(tpq)),
                                   durationTicks: Int(length * Double(tpq)), spelling: Spelling(midi: midi),
                                   hand: hand, staff: hand == .right ? 1 : 2,
@@ -31,17 +31,4 @@ public enum SampleScores {
         return Score(title: "歓喜の歌", composer: "L. v. Beethoven", ticksPerQuarter: tpq,
                      tempoMap: TempoMap(bpm: 120), measures: measures, notes: notes)
     }()
-
-    static func notation(forBeats beats: Double) -> (NoteType, Int) {
-        switch beats {
-        case 4: (.whole, 0)
-        case 3: (.half, 1)
-        case 2: (.half, 0)
-        case 1.5: (.quarter, 1)
-        case 1: (.quarter, 0)
-        case 0.75: (.eighth, 1)
-        case 0.5: (.eighth, 0)
-        default: (.sixteenth, 0)
-        }
-    }
 }

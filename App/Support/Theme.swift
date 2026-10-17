@@ -12,6 +12,8 @@ enum Theme {
     static let rule = Color(hex: 0xD9DCE1)
     static let ruleStrong = Color(hex: 0xC9CDD3)
     static let played = Color(hex: 0xB7BCC4)
+    /// 練習しない手（自動演奏）の音符
+    static let otherHand = Color(hex: 0xC4C8CE)
     static let handR = Color(hex: 0x2D6CDF)
     static let handL = Color(hex: 0xD2691E)
     static let tintR = Color(hex: 0xD9E5FB)

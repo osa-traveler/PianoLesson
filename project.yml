@@ -26,6 +26,8 @@ targets:
       properties:
         CFBundleDisplayName: ピアノ練習
         UILaunchScreen: {}
+        UIAppFonts:
+          - Bravura.otf
         UIRequiresFullScreen: true
         UIStatusBarHidden: true
         UISupportedInterfaceOrientations~ipad:

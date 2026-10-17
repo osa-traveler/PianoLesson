@@ -106,6 +106,16 @@ private struct PlayField: View {
                             .padding(.bottom, 14)
                     }
                 }
+                .contentShape(Rectangle())
+                .gesture(
+                    // 上下にドラッグして再生位置を動かす（下へ引くと先へ進む）
+                    DragGesture(minimumDistance: 6)
+                        .onChanged { value in
+                            model.scrubLane(translation: value.translation.height,
+                                            pointsPerBeat: laneHeight / CGFloat(settings.lookaheadBeats))
+                        }
+                        .onEnded { _ in model.endScrub() }
+                )
             KeyboardCanvas(layout: layout, highlights: highlights,
                            showGuides: settings.showStaffGuides, naming: settings.naming,
                            pressed: judge.pressed, recentWrong: judge.recentWrong, host: host)

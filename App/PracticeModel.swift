@@ -92,6 +92,11 @@ final class PracticeModel {
             scrub(toX: x, geometry: geometry)
             endScrub()
         }
+        // レーンのドラッグの再現: `-demoLaneDrag 160`（pt、下向きが正）
+        if let dy = defaults.string(forKey: "demoLaneDrag").flatMap(Double.init) {
+            scrubLane(translation: dy, pointsPerBeat: 500 / CGFloat(settings.lookaheadBeats))
+            endScrub()
+        }
         // 打鍵の再現: `-demoPress 64,70`
         if let list = defaults.string(forKey: "demoPress") {
             let now = CACurrentMediaTime()
@@ -217,11 +222,14 @@ final class PracticeModel {
         AudioEngine.shared.resetPosition()
     }
 
-    // MARK: - 譜面のドラッグで位置を変える
+    // MARK: - 譜面・レーンのドラッグで位置を変える
 
-    /// ドラッグ中に表示を固定するページ（nil ならドラッグしていない）
+    /// 譜面のドラッグ中に表示を固定するページ
     private(set) var scrubPage: Int?
+    @ObservationIgnored private var isScrubbing = false
     @ObservationIgnored private var resumeAfterScrub = false
+    /// レーンのドラッグを始めたときの拍
+    @ObservationIgnored private var laneScrubStartBeat: Double?
 
     /// 動かせる範囲（ループ範囲と、その前の助走の1小節）
     private var scrubRange: ClosedRange<Double> {
@@ -231,19 +239,42 @@ final class PracticeModel {
         return start...max(start, end - 1e-6)
     }
 
-    func scrub(toX x: CGFloat, geometry: ScoreGeometry) {
-        if scrubPage == nil {
-            resumeAfterScrub = isPlaying
-            if isPlaying { togglePlay() }
-            scrubPage = ScorePaging.state(score: score, beat: currentBeat, rate: settings.tempoRatio).page
-        }
-        guard let page = scrubPage else { return }
-        let beat = ScorePaging.beat(atX: x, page: page, score: score, geometry: geometry)
+    /// ドラッグを始める（再生中なら一時停止し、離したら再開する）
+    private func beginScrub() {
+        guard !isScrubbing else { return }
+        isScrubbing = true
+        resumeAfterScrub = isPlaying
+        if isPlaying { togglePlay() }
+    }
+
+    private func clampedSeek(_ beat: Double) {
         seek(toBeat: min(max(beat, scrubRange.lowerBound), scrubRange.upperBound))
     }
 
+    /// 譜面: 触れた x の位置へ（ドラッグ中はページを固定する）
+    func scrub(toX x: CGFloat, geometry: ScoreGeometry) {
+        if scrubPage == nil {
+            beginScrub()
+            scrubPage = ScorePaging.state(score: score, beat: currentBeat, rate: settings.tempoRatio).page
+        }
+        guard let page = scrubPage else { return }
+        clampedSeek(ScorePaging.beat(atX: x, page: page, score: score, geometry: geometry))
+    }
+
+    /// レーン: 下へドラッグすると先へ進む（ノーツが指についてくる）。1拍の高さで1拍
+    func scrubLane(translation dy: CGFloat, pointsPerBeat: CGFloat) {
+        if laneScrubStartBeat == nil {
+            beginScrub()
+            laneScrubStartBeat = currentBeat
+        }
+        guard let start = laneScrubStartBeat, pointsPerBeat > 0 else { return }
+        clampedSeek(start + Double(dy / pointsPerBeat))
+    }
+
     func endScrub() {
-        guard scrubPage != nil else { return }
+        guard isScrubbing else { return }
+        isScrubbing = false
+        laneScrubStartBeat = nil
         let snapped = ScorePaging.snapToBeat(currentBeat, score: score)
         seek(toBeat: min(max(snapped, scrubRange.lowerBound), scrubRange.upperBound))
         scrubPage = nil

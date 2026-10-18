@@ -66,7 +66,7 @@ import Testing
     /// 手元にある実際の楽譜（git 管理外）を、止まらずに読めるか確認する
     @Test func localSampleIfPresent() throws {
         let url = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent().appendingPathComponent("../../../../Docs/sample.mxl").standardized
+            .deletingLastPathComponent().appendingPathComponent("../../../../private/sample.mxl").standardized
         guard let data = try? Data(contentsOf: url) else { return }
         let result = try MusicXMLImporter.load(data: data, fallbackTitle: "sample")
         #expect(result.score.measures.count == 16)

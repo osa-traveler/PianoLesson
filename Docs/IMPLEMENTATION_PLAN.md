@@ -9,7 +9,7 @@
 | 開発 | Xcode 27 / Swift 6 言語モード / XcodeGen（`project.yml`） |
 | 音源 | 無料の SF2 を同梱（差し替えやすくしておく） |
 | MIDI | 当面は USB（class compliant）。Bluetooth MIDI は後で追加 |
-| サンプル | `Docs/sample.mxl`（Audiveris による OMR 出力。Voice＋Piano の2パート） |
+| サンプル | `private/sample.mxl`（Audiveris による OMR 出力。Voice＋Piano の2パート。git 管理外） |
 
 ### 13インチでの寸法
 

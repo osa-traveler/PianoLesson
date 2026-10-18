@@ -18,3 +18,9 @@ Docs/sample*
 
 # ピアノ音源（scripts/fetch-soundfont.sh で取得）
 App/Resources/Sounds/*.sf2
+
+# GitHub に上げないデータ（iCloud Drive へのシンボリックリンク）
+/private
+
+# 個人の環境（iCloud のパスを含む）
+*.code-workspace

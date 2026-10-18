@@ -171,6 +171,14 @@ open PianoPractice.xcodeproj
 
 ロジックのテスト：`cd Packages/PianoCore && swift test`
 
+### GitHub に上げないデータ（`private/`）
+
+著作権のある楽譜・署名チームIDの控えなど、公開できないデータは `private/` に置く。`private/` は iCloud Drive のフォルダへのシンボリックリンクで、git の管理外（`.gitignore` 済み）。中身の説明は `private/README.md` にある。
+
+- `private/sample.mxl` があれば、テスト `localSampleIfPresent` がそれを読む（無ければ何もしない）
+- シミュレータで開く：`-scorePath <リポジトリのパス>/private/sample.mxl`
+- 新しい Mac では、iCloud Drive の `PianoLesson/private` へ `ln -s` してから `cp private/Config/Local.xcconfig Config/`
+
 ### 確認用の起動引数（DEBUG ビルドのみ）
 
 | 引数 | 内容 |

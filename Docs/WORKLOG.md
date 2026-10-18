@@ -4,6 +4,15 @@
 
 ---
 
+## 2026-10-18 GitHub に上げないデータの置き場所
+
+- 公開できないデータは iCloud Drive の `PianoLesson/private` に置くことにした（要望）。リポジトリの `private/` はそこへのシンボリックリンクで、git の管理外
+- 署名チームIDの控え（`Config/Local.xcconfig`）を置いた
+- sample.mxl のテストは `private/sample.mxl` を読むように変えた
+- ワークスペースファイル（`*.code-workspace`）は iCloud のパスを含むので、git の管理から外した
+
+---
+
 ## 2026-10-18 譜面のドラッグで再生位置を変える
 
 - 実機で確認した結果：歓喜の歌が弾けた（音・入力とも動作）
